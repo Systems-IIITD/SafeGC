@@ -25,7 +25,8 @@ mymalloc:
 # put marker on stack
 	push $0x12abcdef
 	sub $16, %rsp
-	call _mymalloc
+	movabsq $_mymalloc, %rax
+	call *%rax
 	mov %rbp, %rsp
 	pop %rbp
 	ret
@@ -52,7 +53,8 @@ runGC:
 # put marker on stack
 	push $0x12abcdef
 	sub $16, %rsp
-	call _runGC
+	movabsq $_runGC, %rax
+	call *%rax
 	mov %rbp, %rsp
 	pop %rbp
 	ret
