@@ -4,12 +4,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <string.h>
+#include <fcntl.h>
+#include <elf.h>
 #include <assert.h>
 #include <pthread.h>
 #include "memory.h"
 
 typedef unsigned long long ulong64;
 #define MAGIC_ADDR 0x12abcdef
+#define PATH_SZ 128
 
 #define SEGMENT_SIZE (4ULL << 32)
 #define PAGE_SIZE 4096
@@ -329,10 +336,78 @@ static void scanRoots(unsigned *Top, unsigned *Bottom)
 {
 }
 
+static size_t
+getDataSecSz()
+{
+	char Exec[PATH_SZ];
+	ssize_t Count = readlink( "/proc/self/exe", Exec, PATH_SZ);
+	size_t DsecSz = -1;
+
+	if (Count == -1) {
+		return -1;
+	}
+	Exec[Count] = '\0';
+
+	int fd = open(Exec, O_RDONLY);
+	if (fd == -1) {
+		return -1;
+	}
+
+	struct stat Statbuf;
+	fstat(fd, &Statbuf);
+
+	char *Base = mmap(NULL, Statbuf.st_size, PROT_READ, MAP_SHARED, fd, 0);
+	if (Base == NULL) {
+		close(fd);
+		return -1;
+	}
+
+	Elf64_Ehdr *Header = (Elf64_Ehdr*)Base;
+
+	if (Header->e_ident[0] != 0x7f
+		|| Header->e_ident[1] != 'E'
+		|| Header->e_ident[2] != 'L'
+		|| Header->e_ident[3] != 'F')
+	{
+		goto out;
+	}
+
+	int i;
+	Elf64_Shdr *Shdr = (Elf64_Shdr*)(Base + Header->e_shoff);
+	char *Strtab = Base + Shdr[Header->e_shstrndx].sh_offset;
+
+	for (i = 0; i < Header->e_shnum; i++)
+	{
+		char *Name = Strtab + Shdr[i].sh_name;
+		if (!strncmp(Name, ".data", 6))
+		{
+			DsecSz = Shdr[i].sh_size;
+		}
+	}
+
+out:
+	munmap(Base, Statbuf.st_size);
+	close(fd);
+	return DsecSz;
+}
+
+
+
 void _runGC()
 {
 	NumGCTriggered++;
-	unsigned *DataStart = (unsigned*)Align(((ulong64)&etext), 4);
+
+	size_t DataSecSz = getDataSecSz();
+	unsigned *DataStart;
+
+	if (DataSecSz == -1)
+	{
+		DataStart = (unsigned*)Align(((ulong64)&etext), 4);
+	}
+	else
+	{
+		DataStart = (unsigned*)Align(((ulong64)(&edata - DataSecSz)), 4);
+	}
 	unsigned *DataEnd = (unsigned*)((ulong64)(&edata) - 7);
 
 	/* scan global variables */
