@@ -340,8 +340,15 @@ static size_t
 getDataSecSz()
 {
 	char Exec[PATH_SZ];
+	static size_t DsecSz = 0;
+
+	if (DsecSz != 0)
+	{
+		return DsecSz;
+	}
+	DsecSz = -1;
+
 	ssize_t Count = readlink( "/proc/self/exe", Exec, PATH_SZ);
-	size_t DsecSz = -1;
 
 	if (Count == -1) {
 		return -1;
