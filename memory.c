@@ -316,8 +316,9 @@ void *_mymalloc(size_t Size)
 	return AllocPtr + OBJ_HEADER_SIZE;
 }
 
-/* scan and mark objects in the scanner list.
- * add newly encountered objects to the scanner list.
+/* scan objects in the scanner list.
+ * add newly encountered unmarked objects 
+ * to the scanner list after marking them.
  */
 void scanner()
 {
@@ -329,8 +330,9 @@ void sweep()
 }
 
 /* walk all 4-byte aligned addresses.
- * add valid objects to the scanner list for 
- * mark and scan.
+ * add unmarked valid objects to the 
+ * scanner list after marking them
+ * for scanning.
  */
 static void scanRoots(unsigned *Top, unsigned *Bottom)
 {
