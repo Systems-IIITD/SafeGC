@@ -329,12 +329,12 @@ void sweep()
 {
 }
 
-/* walk all 4-byte aligned addresses.
+/* walk all addresses in the range [Top, Bottom-8].
  * add unmarked valid objects to the 
  * scanner list after marking them
  * for scanning.
  */
-static void scanRoots(unsigned *Top, unsigned *Bottom)
+static void scanRoots(unsigned char *Top, unsigned char *Bottom)
 {
 }
 
@@ -407,23 +407,23 @@ void _runGC()
 	NumGCTriggered++;
 
 	size_t DataSecSz = getDataSecSz();
-	unsigned *DataStart;
+	unsigned char *DataStart;
 
 	if (DataSecSz == -1)
 	{
-		DataStart = (unsigned*)Align(((ulong64)&etext), 4);
+		DataStart = (unsigned char*)&etext;
 	}
 	else
 	{
-		DataStart = (unsigned*)Align(((ulong64)(&edata - DataSecSz)), 4);
+		DataStart = (unsigned char*)((char*)&edata - DataSecSz);
 	}
-	unsigned *DataEnd = (unsigned*)((ulong64)(&edata) - 7);
+	unsigned char *DataEnd = (unsigned char*)(&edata);
 
 	/* scan global variables */
 	scanRoots(DataStart, DataEnd);
 
-	unsigned *UnDataStart = (unsigned*)Align(((ulong64)&edata), 4);
-	unsigned *UnDataEnd = (unsigned*)((ulong64)(&end) - 7);
+	unsigned char *UnDataStart = (unsigned char*)(&edata);
+	unsigned char *UnDataEnd = (unsigned char*)(&end);
 
 	/* scan uninitialized global variables */
 	scanRoots(UnDataStart, UnDataEnd);
@@ -446,11 +446,10 @@ void _runGC()
 		printf("Error getting stackinfo\n");
 		return;
 	}
-	unsigned *Bottom = (unsigned*)(Base + Size - 7);
-	unsigned *Top = (unsigned*)&Lvar;
-	Top = (unsigned*)Align((ulong64)Top, 4);
+	unsigned char *Bottom = (unsigned char*)(Base + Size);
+	unsigned char *Top = (unsigned char*)&Lvar;
 	/* skip GC stack frame */
-	while (Top[0] != MAGIC_ADDR)
+	while (*((unsigned*)Top) != MAGIC_ADDR)
 	{
 		assert(Top < Bottom);
 		Top++;
