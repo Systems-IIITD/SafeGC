@@ -280,7 +280,6 @@ void *_mymalloc(size_t Size)
 	assert(Size != 0);
 	assert(sizeof(struct OtherMetadata) <= OTHER_METADATA_SIZE);
 	assert(sizeof(struct Segment) == METADATA_SIZE);
-	NumBytesAllocated += AlignedSize;
 
 	static Segment *CurSeg = NULL;
 
@@ -309,6 +308,7 @@ void *_mymalloc(size_t Size)
 		}
 	}
 
+	NumBytesAllocated += AlignedSize;
 	setAllocPtr(CurSeg, NewAllocPtr);
 	ObjHeader *Header = (ObjHeader*)AllocPtr;
 	Header->Size = AlignedSize;
