@@ -18,7 +18,7 @@ typedef unsigned long long ulong64;
 #define MAGIC_ADDR 0x12abcdef
 #define PATH_SZ 128
 
-#define SEGMENT_SIZE (4ULL << 32)
+#define SEGMENT_SIZE (4ULL << 30)
 #define PAGE_SIZE 4096
 #define METADATA_SIZE ((SEGMENT_SIZE/PAGE_SIZE) * 2)
 #define NUM_PAGES_IN_SEG (METADATA_SIZE/2)
@@ -251,6 +251,7 @@ static void* BigAlloc(size_t Size)
 		CurSeg = allocateSegment(1);
 		return BigAlloc(Size);
 	}
+	NumBytesAllocated += AlignedSize;
 	assert(AllocPtr == CommitPtr);
 	allowAccess(CommitPtr, AlignedSize);
 	setAllocPtr(CurSeg, NewAllocPtr);
@@ -271,7 +272,6 @@ void *_mymalloc(size_t Size)
 {
 	size_t AlignedSize = Align(Size, 8) + OBJ_HEADER_SIZE;
 
-	NumBytesAllocated += AlignedSize;
 	checkAndRunGC(AlignedSize);
 	if (AlignedSize > COMMIT_SIZE)
 	{
@@ -280,6 +280,7 @@ void *_mymalloc(size_t Size)
 	assert(Size != 0);
 	assert(sizeof(struct OtherMetadata) <= OTHER_METADATA_SIZE);
 	assert(sizeof(struct Segment) == METADATA_SIZE);
+	NumBytesAllocated += AlignedSize;
 
 	static Segment *CurSeg = NULL;
 
